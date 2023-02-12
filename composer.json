@@ -15,7 +15,10 @@
         "issues": "http://github.com/innmind/async-http-server/issues"
     },
     "require": {
-        "php": "~8.1"
+        "php": "~8.1",
+        "innmind/mantle": "^1.0",
+        "innmind/async-operating-system": "^1.0",
+        "innmind/http-parser": "dev-develop"
     },
     "autoload": {
         "psr-4": {

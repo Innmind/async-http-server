@@ -9,6 +9,7 @@ use Innmind\Mantle\{
 };
 use Innmind\OperatingSystem\OperatingSystem;
 use Innmind\Async\OperatingSystem\Factory;
+use Innmind\TimeContinuum\ElapsedPeriod;
 use Innmind\HttpParser\{
     Request\Parse,
     ServerRequest\Transform,
@@ -21,12 +22,13 @@ use Innmind\Async\Stream\Streams as AsyncStreams;
 use Innmind\IO\IO;
 use Innmind\Socket;
 use Innmind\Stream\{
-    Watch,
+    Watch\Ready,
     Streams,
 };
 use Innmind\Immutable\{
     Sequence,
     Set,
+    Maybe,
     Predicate\Instance,
 };
 
@@ -34,20 +36,23 @@ final class Server implements Source
 {
     private OperatingSystem $synchronous;
     private Factory $os;
-    private Watch $watch;
+    private Socket\Server $server;
+    private ElapsedPeriod $timeout;
 
     public function __construct(
         OperatingSystem $synchronous,
-        Watch $watch,
+        Socket\Server $server,
+        ElapsedPeriod $timeout,
     ) {
         $this->synchronous = $synchronous;
         $this->os = Factory::of($synchronous);
-        $this->watch = $watch;
+        $this->server = $server;
+        $this->timeout = $timeout;
     }
 
     public function emerge(mixed $carry, Sequence $active): array
     {
-        $ready = ($this->watch)()->match(
+        $ready = $this->watch($active)->match(
             static fn($ready) => $ready->toRead(),
             static fn() => Set::of(),
         );
@@ -95,5 +100,24 @@ final class Server implements Source
     public function active(): bool
     {
         return true;
+    }
+
+    /**
+     * @param Sequence<Task> $active
+     *
+     * @return Maybe<Ready>
+     */
+    private function watch(Sequence $active): Maybe
+    {
+        $watch = $this
+            ->synchronous
+            ->sockets()
+            ->watch(match ($active->size()) {
+                0 => null,
+                default => $this->timeout,
+            })
+            ->forRead($this->server);
+
+        return $watch();
     }
 }

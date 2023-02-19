@@ -18,6 +18,7 @@ use Innmind\HttpParser\{
 };
 use Innmind\Async\Socket\Server\Connection\Async;
 use Innmind\Async\Stream\Streams as AsyncStreams;
+use Innmind\IO\IO;
 use Innmind\Socket;
 use Innmind\Stream\{
     Watch,
@@ -59,21 +60,32 @@ final class Server implements Source
             ))
             ->map(fn($connection) => Task::of(function($suspend) use ($connection) {
                 $os = $this->os->build($suspend);
-                $incoming = Incoming::of($os);
-                $chunks = $incoming(Async::of($connection, $suspend));
-                $parse = new Parse(
+                $io = IO::of($os->sockets()->watch(...));
+
+                $connection = Async::of($connection, $suspend);
+                $capabilities = AsyncStreams::of(
+                    Streams::fromAmbientAuthority(),
+                    $suspend,
                     $os->clock(),
-                    AsyncStreams::of(
-                        Streams::fromAmbientAuthority(),
-                        $suspend,
-                        $os->clock(),
-                    ),
                 );
+
+                $chunks = $io
+                    ->readable()
+                    ->wrap($connection)
+                    ->toEncoding('ASCII')
+                    ->watch()
+                    ->chunks(8192);
+
+                $parse = Parse::of(
+                    $capabilities,
+                    $os->clock(),
+                );
+
                 $request = $parse($chunks)
-                    ->map(new Transform)
-                    ->map(new DecodeCookie)
-                    ->map(new DecodeQuery)
-                    ->map(new DecodeForm);
+                    ->map(Transform::of())
+                    ->map(DecodeCookie::of())
+                    ->map(DecodeQuery::of())
+                    ->map(DecodeForm::of());
                 // todo handle request
             }));
 

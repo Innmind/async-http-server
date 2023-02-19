@@ -18,6 +18,7 @@
         "php": "~8.1",
         "innmind/mantle": "^1.0",
         "innmind/async-operating-system": "^1.0",
+        "innmind/io": "dev-reset",
         "innmind/http-parser": "dev-develop"
     },
     "autoload": {

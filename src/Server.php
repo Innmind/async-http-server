@@ -19,7 +19,7 @@ use Innmind\HttpParser\{
     ServerRequest\DecodeForm,
 };
 use Innmind\Http\{
-    Message\Request,
+    Message\ServerRequest,
     Message\Response,
     Message\StatusCode,
     ProtocolVersion,
@@ -50,12 +50,12 @@ final class Server implements Source
     private ElapsedPeriod $timeout;
     private InjectEnvironment $injectEnv;
     private ResponseSender $send;
-    /** @var callable(Request): Response */
+    /** @var callable(ServerRequest): Response */
     private $handle;
 
     /**
      * @param Sequence<Socket\Server> $servers
-     * @param callable(Request): Response $handle
+     * @param callable(ServerRequest): Response $handle
      */
     public function __construct(
         OperatingSystem $synchronous,

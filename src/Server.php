@@ -50,12 +50,12 @@ final class Server implements Source
     private ElapsedPeriod $timeout;
     private InjectEnvironment $injectEnv;
     private ResponseSender $send;
-    /** @var callable(ServerRequest): Response */
+    /** @var callable(ServerRequest, OperatingSystem): Response */
     private $handle;
 
     /**
      * @param Sequence<Socket\Server> $servers
-     * @param callable(ServerRequest): Response $handle
+     * @param callable(ServerRequest, OperatingSystem): Response $handle
      */
     public function __construct(
         OperatingSystem $synchronous,
@@ -117,9 +117,9 @@ final class Server implements Source
                     ->map(DecodeQuery::of())
                     ->map(DecodeForm::of())
                     ->map($this->injectEnv)
-                    ->map(function($request) {
+                    ->map(function($request) use ($os) {
                         try {
-                            return ($this->handle)($request);
+                            return ($this->handle)($request, $os);
                         } catch (\Throwable $e) {
                             return new Response\Response(
                                 StatusCode::internalServerError,

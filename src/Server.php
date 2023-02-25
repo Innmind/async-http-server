@@ -17,6 +17,12 @@ use Innmind\HttpParser\{
     ServerRequest\DecodeQuery,
     ServerRequest\DecodeForm,
 };
+use Innmind\Http\{
+    Message\Request,
+    Message\Response,
+    Message\StatusCode,
+    ProtocolVersion,
+};
 use Innmind\Async\Socket\Server\Connection\Async;
 use Innmind\Async\Stream\Streams as AsyncStreams;
 use Innmind\IO\IO;
@@ -38,6 +44,9 @@ final class Server implements Source
     private Factory $os;
     private Socket\Server $server;
     private ElapsedPeriod $timeout;
+    private ResponseSender $send;
+    /** @var callable(Request): Response */
+    private $map;
 
     public function __construct(
         OperatingSystem $synchronous,
@@ -48,6 +57,11 @@ final class Server implements Source
         $this->os = Factory::of($synchronous);
         $this->server = $server;
         $this->timeout = $timeout;
+        $this->send = new ResponseSender($synchronous->clock());
+        $this->map = static fn(Request $request): Response => new Response\Response(
+            StatusCode::ok,
+            $request->protocolVersion(),
+        );
     }
 
     public function emerge(mixed $carry, Sequence $active): array
@@ -86,12 +100,35 @@ final class Server implements Source
                     $os->clock(),
                 );
 
-                $request = $parse($chunks)
+                $_ = $parse($chunks)
                     ->map(Transform::of())
                     ->map(DecodeCookie::of())
                     ->map(DecodeQuery::of())
-                    ->map(DecodeForm::of());
-                // todo handle request
+                    ->map(DecodeForm::of())
+                    ->map(function($request) {
+                        try {
+                            return ($this->map)($request);
+                        } catch (\Throwable $e) {
+                            return new Response\Response(
+                                StatusCode::internalServerError,
+                                $request->protocolVersion(),
+                            );
+                        }
+                    })
+                    ->otherwise(static fn() => Maybe::just(new Response\Response( // failed to parse the request
+                        StatusCode::badRequest,
+                        ProtocolVersion::v10,
+                    )))
+                    ->flatMap(fn($response) => ($this->send)($connection, $response))
+                    ->flatMap(
+                        static fn($connection) => $connection
+                            ->close()
+                            ->maybe(),
+                    )
+                    ->match(
+                        static fn() => null, // response sent
+                        static fn() => null, // failed to send response or close connection
+                    );
             }));
 
         return [$carry, Sequence::of(...$connections->toList())];

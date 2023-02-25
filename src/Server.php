@@ -24,12 +24,12 @@ use Innmind\Http\{
     ProtocolVersion,
 };
 use Innmind\Async\Socket\Server\Connection\Async;
-use Innmind\Async\Stream\Streams as AsyncStreams;
+use Innmind\Async\Stream\Streams;
 use Innmind\IO\IO;
 use Innmind\Socket;
 use Innmind\Stream\{
     Watch\Ready,
-    Streams,
+    Capabilities,
 };
 use Innmind\Immutable\{
     Sequence,
@@ -41,6 +41,7 @@ use Innmind\Immutable\{
 final class Server implements Source
 {
     private OperatingSystem $synchronous;
+    private Capabilities $capabilities;
     private Factory $os;
     private Socket\Server $server;
     private ElapsedPeriod $timeout;
@@ -50,10 +51,12 @@ final class Server implements Source
 
     public function __construct(
         OperatingSystem $synchronous,
+        Capabilities $capabilities,
         Socket\Server $server,
         ElapsedPeriod $timeout,
     ) {
         $this->synchronous = $synchronous;
+        $this->capabilities = $capabilities;
         $this->os = Factory::of($synchronous);
         $this->server = $server;
         $this->timeout = $timeout;
@@ -82,8 +85,8 @@ final class Server implements Source
                 $io = IO::of($os->sockets()->watch(...));
 
                 $connection = Async::of($connection, $suspend);
-                $capabilities = AsyncStreams::of(
-                    Streams::fromAmbientAuthority(),
+                $capabilities = Streams::of(
+                    $this->capabilities,
                     $suspend,
                     $os->clock(),
                 );

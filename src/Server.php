@@ -50,16 +50,18 @@ final class Server implements Source
     private ElapsedPeriod $timeout;
     private ResponseSender $send;
     /** @var callable(Request): Response */
-    private $map;
+    private $handle;
 
     /**
      * @param Sequence<Socket\Server> $servers
+     * @param callable(Request): Response $handle
      */
     public function __construct(
         OperatingSystem $synchronous,
         Capabilities $capabilities,
         Sequence $servers,
         ElapsedPeriod $timeout,
+        callable $handle,
     ) {
         $this->synchronous = $synchronous;
         $this->capabilities = $capabilities;
@@ -67,10 +69,7 @@ final class Server implements Source
         $this->servers = $servers;
         $this->timeout = $timeout;
         $this->send = new ResponseSender($synchronous->clock());
-        $this->map = static fn(Request $request): Response => new Response\Response(
-            StatusCode::ok,
-            $request->protocolVersion(),
-        );
+        $this->handle = $handle;
     }
 
     public function emerge(mixed $carry, Sequence $active): array
@@ -116,7 +115,7 @@ final class Server implements Source
                     ->map(DecodeForm::of())
                     ->map(function($request) {
                         try {
-                            return ($this->map)($request);
+                            return ($this->handle)($request);
                         } catch (\Throwable $e) {
                             return new Response\Response(
                                 StatusCode::internalServerError,

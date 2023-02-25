@@ -48,6 +48,7 @@ final class Server implements Source
     /** @var Sequence<Socket\Server> */
     private Sequence $servers;
     private ElapsedPeriod $timeout;
+    private InjectEnvironment $injectEnv;
     private ResponseSender $send;
     /** @var callable(Request): Response */
     private $handle;
@@ -61,6 +62,7 @@ final class Server implements Source
         Capabilities $capabilities,
         Sequence $servers,
         ElapsedPeriod $timeout,
+        InjectEnvironment $injectEnv,
         callable $handle,
     ) {
         $this->synchronous = $synchronous;
@@ -68,6 +70,7 @@ final class Server implements Source
         $this->os = Factory::of($synchronous);
         $this->servers = $servers;
         $this->timeout = $timeout;
+        $this->injectEnv = $injectEnv;
         $this->send = new ResponseSender($synchronous->clock());
         $this->handle = $handle;
     }
@@ -113,6 +116,7 @@ final class Server implements Source
                     ->map(DecodeCookie::of())
                     ->map(DecodeQuery::of())
                     ->map(DecodeForm::of())
+                    ->map($this->injectEnv)
                     ->map(function($request) {
                         try {
                             return ($this->handle)($request);

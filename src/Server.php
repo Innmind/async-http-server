@@ -10,6 +10,7 @@ use Innmind\Mantle\{
 use Innmind\OperatingSystem\OperatingSystem;
 use Innmind\Async\OperatingSystem\Factory;
 use Innmind\TimeContinuum\ElapsedPeriod;
+use Innmind\Filesystem\File\Content;
 use Innmind\HttpParser\{
     Request\Parse,
     ServerRequest\Transform,
@@ -126,6 +127,8 @@ final class Server implements Source
                     ->otherwise(static fn() => Maybe::just(new Response\Response( // failed to parse the request
                         StatusCode::badRequest,
                         ProtocolVersion::v10,
+                        null,
+                        Content\Lines::ofContent('Request doesn\'t respect HTTP protocol'),
                     )))
                     ->flatMap(fn($response) => ($this->send)($connection, $response))
                     ->flatMap(

@@ -28,6 +28,7 @@ use Innmind\Async\Stream\Streams;
 use Innmind\IO\IO;
 use Innmind\Socket;
 use Innmind\Stream\{
+    Watch,
     Watch\Ready,
     Capabilities,
 };
@@ -43,22 +44,26 @@ final class Server implements Source
     private OperatingSystem $synchronous;
     private Capabilities $capabilities;
     private Factory $os;
-    private Socket\Server $server;
+    /** @var Sequence<Socket\Server> */
+    private Sequence $servers;
     private ElapsedPeriod $timeout;
     private ResponseSender $send;
     /** @var callable(Request): Response */
     private $map;
 
+    /**
+     * @param Sequence<Socket\Server> $servers
+     */
     public function __construct(
         OperatingSystem $synchronous,
         Capabilities $capabilities,
-        Socket\Server $server,
+        Sequence $servers,
         ElapsedPeriod $timeout,
     ) {
         $this->synchronous = $synchronous;
         $this->capabilities = $capabilities;
         $this->os = Factory::of($synchronous);
-        $this->server = $server;
+        $this->servers = $servers;
         $this->timeout = $timeout;
         $this->send = new ResponseSender($synchronous->clock());
         $this->map = static fn(Request $request): Response => new Response\Response(
@@ -155,8 +160,11 @@ final class Server implements Source
             ->watch(match ($active->size()) {
                 0 => null,
                 default => $this->timeout,
-            })
-            ->forRead($this->server);
+            });
+        $watch = $this->servers->reduce(
+            $watch,
+            static fn(Watch $watch, $server) => $watch->forRead($server),
+        );
 
         return $watch();
     }

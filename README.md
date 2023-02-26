@@ -58,3 +58,5 @@ You can run this server via the command `php server.php`. By default the server 
 This example will return the content of the file `somewhere/some-file` if it exists on the filesystem otherwise it will respond with a `404 not found`.
 
 The asynchronicity of this program is handled by the `OperatingSystem` abstraction meaning you can write code _as if_ it was synchronous.
+
+**Note**: you can run `php server.php --help` to see the options available to configure the server.

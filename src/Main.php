@@ -24,7 +24,10 @@ abstract class Main extends Cli
         return $run($env);
     }
 
-    abstract protected function handle(
+    /**
+     * The handler is static to prevent sharing state between requests
+     */
+    abstract protected static function handle(
         ServerRequest $request,
         OperatingSystem $os,
     ): Response;

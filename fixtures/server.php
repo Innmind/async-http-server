@@ -16,7 +16,7 @@ use Innmind\Filesystem\File\Content;
 
 new class extends Main
 {
-    protected function handle(ServerRequest $request, OperatingSystem $os): Response
+    protected static function handle(ServerRequest $request, OperatingSystem $os): Response
     {
         return new Response\Response(
             StatusCode::ok,

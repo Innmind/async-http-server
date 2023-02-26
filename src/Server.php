@@ -3,6 +3,7 @@ declare(strict_types = 1);
 
 namespace Innmind\Async\HttpServer;
 
+use Innmind\Async\HttpServer\Display\Output;
 use Innmind\Mantle\{
     Source,
     Task,
@@ -37,6 +38,7 @@ use Innmind\Immutable\{
     Sequence,
     Set,
     Maybe,
+    Str,
     Predicate\Instance,
 };
 
@@ -52,27 +54,34 @@ final class Server implements Source
     private ResponseSender $send;
     /** @var callable(ServerRequest, OperatingSystem): Response */
     private $handle;
+    private Display $display;
 
     /**
+     * @psalm-mutation-free
+     *
      * @param Sequence<Socket\Server> $servers
      * @param callable(ServerRequest, OperatingSystem): Response $handle
      */
     private function __construct(
         OperatingSystem $synchronous,
         Capabilities $capabilities,
+        Factory $os,
         Sequence $servers,
         ElapsedPeriod $timeout,
         InjectEnvironment $injectEnv,
+        ResponseSender $send,
         callable $handle,
+        Display $display,
     ) {
         $this->synchronous = $synchronous;
         $this->capabilities = $capabilities;
-        $this->os = Factory::of($synchronous);
+        $this->os = $os;
         $this->servers = $servers;
         $this->timeout = $timeout;
         $this->injectEnv = $injectEnv;
-        $this->send = new ResponseSender($synchronous->clock());
+        $this->send = $send;
         $this->handle = $handle;
+        $this->display = $display;
     }
 
     /**
@@ -90,15 +99,38 @@ final class Server implements Source
         return new self(
             $synchronous,
             $capabilities,
+            Factory::of($synchronous),
             $servers,
             $timeout,
             $injectEnv,
+            new ResponseSender($synchronous->clock()),
             $handle,
+            Display::of(),
+        );
+    }
+
+    /**
+     * @psalm-mutation-free
+     */
+    public function withOutput(Output $output): self
+    {
+        return new self(
+            $this->synchronous,
+            $this->capabilities,
+            $this->os,
+            $this->servers,
+            $this->timeout,
+            $this->injectEnv,
+            $this->send,
+            $this->handle,
+            $this->display->with($output),
         );
     }
 
     public function emerge(mixed $carry, Sequence $active): array
     {
+        $carry = ($this->display)($carry, Str::of("Connections still active: {$active->size()}\n"));
+
         $ready = $this->watch($active)->match(
             static fn($ready) => $ready->toRead(),
             static fn() => Set::of(),
@@ -166,6 +198,7 @@ final class Server implements Source
                         static fn() => null, // failed to send response or close connection
                     );
             }));
+        $carry = ($this->display)($carry, Str::of("New connections: {$connections->size()}\n"));
 
         return [$carry, Sequence::of(...$connections->toList())];
     }

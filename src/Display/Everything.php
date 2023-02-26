@@ -1,0 +1,30 @@
+<?php
+declare(strict_types = 1);
+
+namespace Innmind\Async\HttpServer\Display;
+
+use Innmind\CLI\Environment;
+use Innmind\Immutable\Str;
+
+/**
+ * @psalm-immutable
+ */
+final class Everything implements Output
+{
+    private function __construct()
+    {
+    }
+
+    public function __invoke(Environment $env, Str $data): Environment
+    {
+        return $env->output($data);
+    }
+
+    /**
+     * @psalm-pure
+     */
+    public static function of(): self
+    {
+        return new self;
+    }
+}

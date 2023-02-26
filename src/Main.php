@@ -19,7 +19,7 @@ abstract class Main extends Cli
 {
     protected function main(Environment $env, OperatingSystem $os): Environment
     {
-        $run = Commands::of(new Serve($os, $this->handle(...)));
+        $run = Commands::of(Serve::of($os, $this->handle(...)));
 
         return $run($env);
     }

@@ -41,7 +41,7 @@ final class Serve implements Command
     /**
      * @param callable(ServerRequest, OperatingSystem): Response $handle
      */
-    public function __construct(
+    private function __construct(
         OperatingSystem $os,
         callable $handle,
     ) {
@@ -66,6 +66,16 @@ final class Serve implements Command
                 ->error(Str::of("Failed to open sockets\n"))
                 ->exit(1),
         );
+    }
+
+    /**
+     * @param callable(ServerRequest, OperatingSystem): Response $handle
+     */
+    public static function of(
+        OperatingSystem $os,
+        callable $handle,
+    ): self {
+        return new self($os, $handle);
     }
 
     /**

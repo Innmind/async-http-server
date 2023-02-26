@@ -14,8 +14,7 @@ use Innmind\Http\{
 };
 use Innmind\Filesystem\File\Content;
 
-new class extends Main
-{
+new class extends Main {
     protected static function handle(ServerRequest $request, OperatingSystem $os): Response
     {
         return new Response\Response(

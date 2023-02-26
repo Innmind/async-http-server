@@ -57,7 +57,7 @@ final class Server implements Source
      * @param Sequence<Socket\Server> $servers
      * @param callable(ServerRequest, OperatingSystem): Response $handle
      */
-    public function __construct(
+    private function __construct(
         OperatingSystem $synchronous,
         Capabilities $capabilities,
         Sequence $servers,
@@ -73,6 +73,28 @@ final class Server implements Source
         $this->injectEnv = $injectEnv;
         $this->send = new ResponseSender($synchronous->clock());
         $this->handle = $handle;
+    }
+
+    /**
+     * @param Sequence<Socket\Server> $servers
+     * @param callable(ServerRequest, OperatingSystem): Response $handle
+     */
+    public static function of(
+        OperatingSystem $synchronous,
+        Capabilities $capabilities,
+        Sequence $servers,
+        ElapsedPeriod $timeout,
+        InjectEnvironment $injectEnv,
+        callable $handle,
+    ): self {
+        return new self(
+            $synchronous,
+            $capabilities,
+            $servers,
+            $timeout,
+            $injectEnv,
+            $handle,
+        );
     }
 
     public function emerge(mixed $carry, Sequence $active): array

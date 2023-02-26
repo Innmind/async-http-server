@@ -10,7 +10,7 @@ use Innmind\Mantle\{
 };
 use Innmind\OperatingSystem\OperatingSystem;
 use Innmind\Async\OperatingSystem\Factory;
-use Innmind\TimeContinuum\ElapsedPeriod;
+use Innmind\TimeContinuum\Earth\ElapsedPeriod;
 use Innmind\Filesystem\File\Content;
 use Innmind\HttpParser\{
     Request\Parse,
@@ -49,7 +49,6 @@ final class Server implements Source
     private Factory $os;
     /** @var Sequence<Socket\Server> */
     private Sequence $servers;
-    private ElapsedPeriod $timeout;
     private InjectEnvironment $injectEnv;
     private ResponseSender $send;
     /** @var callable(ServerRequest, OperatingSystem): Response */
@@ -67,7 +66,6 @@ final class Server implements Source
         Capabilities $capabilities,
         Factory $os,
         Sequence $servers,
-        ElapsedPeriod $timeout,
         InjectEnvironment $injectEnv,
         ResponseSender $send,
         callable $handle,
@@ -77,7 +75,6 @@ final class Server implements Source
         $this->capabilities = $capabilities;
         $this->os = $os;
         $this->servers = $servers;
-        $this->timeout = $timeout;
         $this->injectEnv = $injectEnv;
         $this->send = $send;
         $this->handle = $handle;
@@ -92,7 +89,6 @@ final class Server implements Source
         OperatingSystem $synchronous,
         Capabilities $capabilities,
         Sequence $servers,
-        ElapsedPeriod $timeout,
         InjectEnvironment $injectEnv,
         callable $handle,
     ): self {
@@ -101,7 +97,6 @@ final class Server implements Source
             $capabilities,
             Factory::of($synchronous),
             $servers,
-            $timeout,
             $injectEnv,
             new ResponseSender($synchronous->clock()),
             $handle,
@@ -119,7 +114,6 @@ final class Server implements Source
             $this->capabilities,
             $this->os,
             $this->servers,
-            $this->timeout,
             $this->injectEnv,
             $this->send,
             $this->handle,
@@ -218,9 +212,9 @@ final class Server implements Source
         $watch = $this
             ->synchronous
             ->sockets()
-            ->watch(match ($active->size()) {
-                0 => null,
-                default => $this->timeout,
+            ->watch(match ($active->empty()) {
+                true => null,
+                false => ElapsedPeriod::of(0), // use polling to avoid blocking the tasks
             });
         $watch = $this->servers->reduce(
             $watch,

@@ -72,7 +72,6 @@ abstract class Main extends Cli
                 false => Streams::fromAmbientAuthority(),
             },
             $servers,
-            ElapsedPeriod::of(1_000),
             InjectEnvironment::of(new HttpEnv($env->variables())),
             $this->handle(...),
         );

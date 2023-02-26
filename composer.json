@@ -20,7 +20,8 @@
         "innmind/async-operating-system": "^1.0",
         "innmind/io": "~1.0",
         "innmind/http-parser": "~1.0",
-        "innmind/cli": "^3.3"
+        "innmind/cli": "^3.3",
+        "innmind/operating-system": "~3.7"
     },
     "autoload": {
         "psr-4": {

@@ -15,7 +15,13 @@
         "issues": "http://github.com/innmind/async-http-server/issues"
     },
     "require": {
-        "php": "~8.1"
+        "php": "~8.1",
+        "innmind/mantle": "^1.0",
+        "innmind/async-operating-system": "^1.0",
+        "innmind/io": "~1.0",
+        "innmind/http-parser": "~1.0",
+        "innmind/cli": "^3.3",
+        "innmind/operating-system": "~3.7"
     },
     "autoload": {
         "psr-4": {
@@ -32,5 +38,8 @@
         "vimeo/psalm": "~5.6",
         "innmind/black-box": "~4.17",
         "innmind/coding-standard": "~2.0"
+    },
+    "provide": {
+        "innmind/mantle-sources": "1.0"
     }
 }

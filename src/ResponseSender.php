@@ -59,7 +59,7 @@ final class ResponseSender
         );
         $connection = $connection->write(Str::of($firstLine)->append(self::EOL));
         /**
-         * @psalm-suppress MixedArgumentTypeCoercion Due to the reduce
+         * @psalm-suppress ArgumentTypeCoercion Due to the reduce
          * @var Either<FailedToWriteToStream|DataPartiallyWritten, Connection>
          */
         $connection = $headers->reduce(

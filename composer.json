@@ -18,7 +18,7 @@
         "php": "~8.2",
         "innmind/mantle": "^1.0",
         "innmind/async-operating-system": "^1.0",
-        "innmind/io": "~1.0|~2.0",
+        "innmind/io": "~2.0",
         "innmind/http-parser": "~1.0",
         "innmind/cli": "^3.3",
         "innmind/operating-system": "~3.7"

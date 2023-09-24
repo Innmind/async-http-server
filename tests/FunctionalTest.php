@@ -61,7 +61,7 @@ class FunctionalTest extends TestCase
             ))
             ->match(
                 static fn($success) => $success->response(),
-                static fn($error) => $error->reason(),
+                static fn() => null,
             );
 
         $this->assertInstanceOf(Response::class, $response);

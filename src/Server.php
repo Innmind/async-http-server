@@ -150,7 +150,7 @@ final class Server implements Source
                 $chunks = $io
                     ->readable()
                     ->wrap($connection)
-                    ->toEncoding('ASCII')
+                    ->toEncoding(Str\Encoding::ascii)
                     ->watch()
                     ->chunks(8192);
 

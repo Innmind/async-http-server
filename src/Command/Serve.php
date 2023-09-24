@@ -100,9 +100,9 @@ final class Serve implements Command
     {
         $source = Server::of(
             $this->os,
-            match ($this->os instanceof OperatingSystem\Unix) {
-                true => $this->os->config()->streamCapabilities(),
-                false => Streams::fromAmbientAuthority(),
+            match (true) {
+                $this->os instanceof OperatingSystem\Unix => $this->os->config()->streamCapabilities(),
+                default => Streams::fromAmbientAuthority(),
             },
             $servers,
             InjectEnvironment::of(new HttpEnv($console->variables())),

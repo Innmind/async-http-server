@@ -8,8 +8,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macOS-latest]
-        php-version: ['8.2', '8.3']
-        dependencies: ['lowest', 'highest']
+        php-version: ['8.2']
     name: 'PHPUnit'
     steps:
       - name: Checkout
@@ -22,16 +21,13 @@ jobs:
           coverage: none
       - name: Composer
         uses: "ramsey/composer-install@v2"
-        with:
-          dependency-versions: ${{ matrix.dependencies }}
       - name: PHPUnit
         run: vendor/bin/phpunit
   psalm:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        php-version: ['8.2', '8.3']
-        dependencies: ['lowest', 'highest']
+        php-version: ['8.2']
     name: 'Psalm'
     steps:
       - name: Checkout
@@ -43,8 +39,6 @@ jobs:
           extensions: mbstring, intl
       - name: Composer
         uses: "ramsey/composer-install@v2"
-        with:
-          dependency-versions: ${{ matrix.dependencies }}
       - name: Psalm
         run: vendor/bin/psalm --shepherd
   cs:

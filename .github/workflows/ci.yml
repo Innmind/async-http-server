@@ -26,8 +26,6 @@ jobs:
           dependency-versions: ${{ matrix.dependencies }}
       - name: PHPUnit
         run: vendor/bin/phpunit
-        env:
-          BLACKBOX_DETAILED_PROPERTIES: 1
   psalm:
     runs-on: ubuntu-latest
     strategy:

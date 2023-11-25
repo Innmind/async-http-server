@@ -3,11 +3,10 @@ declare(strict_types = 1);
 
 namespace Innmind\Async\HttpServer;
 
-use Innmind\Filesystem\Chunk;
 use Innmind\TimeContinuum\Clock;
 use Innmind\Socket\Server\Connection;
 use Innmind\Http\{
-    Message\Response,
+    Response,
     Header\Date,
 };
 use Innmind\Stream\{
@@ -28,12 +27,10 @@ final class ResponseSender
     private const EOL = "\r\n";
 
     private Clock $clock;
-    private Chunk $chunk;
 
     public function __construct(Clock $clock)
     {
         $this->clock = $clock;
-        $this->chunk = new Chunk;
     }
 
     /**
@@ -76,7 +73,9 @@ final class ResponseSender
          * @psalm-suppress MixedArgumentTypeCoercion Due to the reduce
          * @var Maybe<Connection>
          */
-        return ($this->chunk)($response->body())
+        return $response
+            ->body()
+            ->chunks()
             ->add(Str::of(self::EOL))
             ->add(Str::of(self::EOL))
             ->reduce(

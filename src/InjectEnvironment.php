@@ -3,9 +3,9 @@ declare(strict_types = 1);
 
 namespace Innmind\Async\HttpServer;
 
-use Innmind\Http\Message\{
+use Innmind\Http\{
     ServerRequest,
-    Environment,
+    ServerRequest\Environment,
 };
 
 final class InjectEnvironment
@@ -19,7 +19,7 @@ final class InjectEnvironment
 
     public function __invoke(ServerRequest $request): ServerRequest
     {
-        return new ServerRequest\ServerRequest(
+        return ServerRequest::of(
             $request->url(),
             $request->method(),
             $request->protocolVersion(),

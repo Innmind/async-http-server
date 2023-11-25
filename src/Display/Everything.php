@@ -3,10 +3,7 @@ declare(strict_types = 1);
 
 namespace Innmind\Async\HttpServer\Display;
 
-use Innmind\CLI\{
-    Console,
-    Environment,
-};
+use Innmind\CLI\Console;
 use Innmind\Immutable\Str;
 
 /**
@@ -18,10 +15,8 @@ final class Everything implements Output
     {
     }
 
-    /** @psalm-suppress InvalidReturnType */
-    public function __invoke(Environment|Console $env, Str $data): Environment|Console
+    public function __invoke(Console $env, Str $data): Console
     {
-        /** @psalm-suppress InvalidReturnStatement */
         return $env->output($data);
     }
 

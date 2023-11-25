@@ -3,10 +3,7 @@ declare(strict_types = 1);
 
 namespace Innmind\Async\HttpServer\Display;
 
-use Innmind\CLI\{
-    Console,
-    Environment,
-};
+use Innmind\CLI\Console;
 use Innmind\Immutable\Str;
 
 /**
@@ -14,12 +11,5 @@ use Innmind\Immutable\Str;
  */
 interface Output
 {
-    /**
-     * @template T of Environment|Console
-     *
-     * @param T $env
-     *
-     * @return T
-     */
-    public function __invoke(Environment|Console $env, Str $data): Environment|Console;
+    public function __invoke(Console $env, Str $data): Console;
 }

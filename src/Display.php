@@ -7,10 +7,7 @@ use Innmind\Async\HttpServer\Display\{
     Output,
     Everything,
 };
-use Innmind\CLI\{
-    Console,
-    Environment,
-};
+use Innmind\CLI\Console;
 use Innmind\Immutable\Str;
 
 /**
@@ -25,20 +22,9 @@ final class Display
         $this->output = $output;
     }
 
-    /**
-     * @template T
-     *
-     * @param T $console
-     *
-     * @return T
-     */
-    public function __invoke(mixed $console, Str $data): mixed
+    public function __invoke(Console $console, Str $data): Console
     {
-        /** @var T */
-        return match ($console instanceof Environment || $console instanceof Console) {
-            true => ($this->output)($console, $data),
-            false => $console,
-        };
+        return ($this->output)($console, $data);
     }
 
     /**

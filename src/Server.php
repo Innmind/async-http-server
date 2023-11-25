@@ -4,13 +4,13 @@ declare(strict_types = 1);
 namespace Innmind\Async\HttpServer;
 
 use Innmind\Async\HttpServer\Display\Output;
+use Innmind\CLI\Console;
 use Innmind\Mantle\{
-    Source,
+    Source\Continuation,
     Task,
 };
 use Innmind\OperatingSystem\OperatingSystem;
-use Innmind\Async\OperatingSystem\Factory;
-use Innmind\TimeContinuum\Earth\ElapsedPeriod;
+use Innmind\TimeContinuum\Clock;
 use Innmind\Filesystem\File\Content;
 use Innmind\HttpParser\{
     Request\Parse,
@@ -20,19 +20,16 @@ use Innmind\HttpParser\{
     ServerRequest\DecodeForm,
 };
 use Innmind\Http\{
-    Message\ServerRequest,
-    Message\Response,
-    Message\StatusCode,
+    ServerRequest,
+    Response,
+    Response\StatusCode,
     ProtocolVersion,
 };
-use Innmind\Async\Socket\Server\Connection\Async;
-use Innmind\Async\Stream\Streams;
 use Innmind\IO\IO;
 use Innmind\Socket;
 use Innmind\Stream\{
     Watch,
     Watch\Ready,
-    Capabilities,
 };
 use Innmind\Immutable\{
     Sequence,
@@ -42,11 +39,8 @@ use Innmind\Immutable\{
     Predicate\Instance,
 };
 
-final class Server implements Source
+final class Server
 {
-    private OperatingSystem $synchronous;
-    private Capabilities $capabilities;
-    private Factory $os;
     /** @var Sequence<Socket\Server> */
     private Sequence $servers;
     private InjectEnvironment $injectEnv;
@@ -62,18 +56,12 @@ final class Server implements Source
      * @param callable(ServerRequest, OperatingSystem): Response $handle
      */
     private function __construct(
-        OperatingSystem $synchronous,
-        Capabilities $capabilities,
-        Factory $os,
         Sequence $servers,
         InjectEnvironment $injectEnv,
         ResponseSender $send,
         callable $handle,
         Display $display,
     ) {
-        $this->synchronous = $synchronous;
-        $this->capabilities = $capabilities;
-        $this->os = $os;
         $this->servers = $servers;
         $this->injectEnv = $injectEnv;
         $this->send = $send;
@@ -82,84 +70,39 @@ final class Server implements Source
     }
 
     /**
-     * @param Sequence<Socket\Server> $servers
-     * @param callable(ServerRequest, OperatingSystem): Response $handle
+     * @param Continuation<Console, void> $continuation
+     * @param Sequence<void> $terminated
+     *
+     * @return Continuation<Console, void>
      */
-    public static function of(
-        OperatingSystem $synchronous,
-        Capabilities $capabilities,
-        Sequence $servers,
-        InjectEnvironment $injectEnv,
-        callable $handle,
-    ): self {
-        return new self(
-            $synchronous,
-            $capabilities,
-            Factory::of($synchronous),
-            $servers,
-            $injectEnv,
-            new ResponseSender($synchronous->clock()),
-            $handle,
-            Display::of(),
-        );
-    }
+    public function __invoke(
+        Console $console,
+        OperatingSystem $os,
+        Continuation $continuation,
+        Sequence $terminated,
+    ): Continuation {
+        $console = ($this->display)($console, Str::of("Pending connections...\n"));
 
-    /**
-     * @psalm-mutation-free
-     */
-    public function withOutput(Output $output): self
-    {
-        return new self(
-            $this->synchronous,
-            $this->capabilities,
-            $this->os,
-            $this->servers,
-            $this->injectEnv,
-            $this->send,
-            $this->handle,
-            $this->display->with($output),
-        );
-    }
-
-    public function emerge(mixed $carry, Sequence $active): array
-    {
-        $carry = ($this->display)($carry, Str::of("Connections still active: {$active->size()}\n"));
-
-        $ready = $this->watch($active)->match(
+        $ready = $this->watch($os)->match(
             static fn($ready) => $ready->toRead(),
             static fn() => Set::of(),
         );
-        /** @psalm-suppress InvalidArgument Due to empty Set */
         $connections = $ready
             ->keep(Instance::of(Socket\Server::class))
             ->flatMap(static fn($server) => $server->accept()->match(
                 static fn($connection) => Set::of($connection),
                 static fn() => Set::of(),
             ))
-            ->map(fn($connection) => Task::of(function($suspend) use ($connection) {
-                $os = $this->os->build($suspend);
-                $io = IO::of($os->sockets()->watch(...));
-
-                $connection = Async::of($connection, $suspend);
-                $capabilities = Streams::of(
-                    $this->capabilities,
-                    $suspend,
-                    $os->clock(),
-                );
-
-                $chunks = $io
+            ->map(fn($connection) => Task::of(function($os) use ($connection) {
+                $io = IO::of($os->sockets()->watch(...))
                     ->readable()
                     ->wrap($connection)
                     ->toEncoding(Str\Encoding::ascii)
-                    ->watch()
-                    ->chunks(8192);
+                    ->watch();
 
-                $parse = Parse::of(
-                    $capabilities,
-                    $os->clock(),
-                );
+                $parse = Parse::default($os->clock());
 
-                $_ = $parse($chunks)
+                $_ = $parse($io)
                     ->map(Transform::of())
                     ->map(DecodeCookie::of())
                     ->map(DecodeQuery::of())
@@ -169,17 +112,17 @@ final class Server implements Source
                         try {
                             return ($this->handle)($request, $os);
                         } catch (\Throwable $e) {
-                            return new Response\Response(
+                            return Response::of(
                                 StatusCode::internalServerError,
                                 $request->protocolVersion(),
                             );
                         }
                     })
-                    ->otherwise(static fn() => Maybe::just(new Response\Response( // failed to parse the request
+                    ->otherwise(static fn() => Maybe::just(Response::of( // failed to parse the request
                         StatusCode::badRequest,
                         ProtocolVersion::v10,
                         null,
-                        Content\Lines::ofContent('Request doesn\'t respect HTTP protocol'),
+                        Content::ofString('Request doesn\'t respect HTTP protocol'),
                     )))
                     ->flatMap(fn($response) => ($this->send)($connection, $response))
                     ->flatMap(
@@ -192,30 +135,54 @@ final class Server implements Source
                         static fn() => null, // failed to send response or close connection
                     );
             }));
-        $carry = ($this->display)($carry, Str::of("New connections: {$connections->size()}\n"));
+        $console = ($this->display)($console, Str::of("New connections: {$connections->size()}\n"));
 
-        return [$carry, Sequence::of(...$connections->toList())];
-    }
-
-    public function active(): bool
-    {
-        return true;
+        return $continuation
+            ->carryWith($console)
+            ->launch(Sequence::of(...$connections->toList()));
     }
 
     /**
-     * @param Sequence<Task> $active
-     *
+     * @param Sequence<Socket\Server> $servers
+     * @param callable(ServerRequest, OperatingSystem): Response $handle
+     */
+    public static function of(
+        Clock $clock,
+        Sequence $servers,
+        InjectEnvironment $injectEnv,
+        callable $handle,
+    ): self {
+        return new self(
+            $servers,
+            $injectEnv,
+            new ResponseSender($clock),
+            $handle,
+            Display::of(),
+        );
+    }
+
+    /**
+     * @psalm-mutation-free
+     */
+    public function withOutput(Output $output): self
+    {
+        return new self(
+            $this->servers,
+            $this->injectEnv,
+            $this->send,
+            $this->handle,
+            $this->display->with($output),
+        );
+    }
+
+    /**
      * @return Maybe<Ready>
      */
-    private function watch(Sequence $active): Maybe
+    private function watch(OperatingSystem $os): Maybe
     {
-        $watch = $this
-            ->synchronous
+        $watch = $os
             ->sockets()
-            ->watch(match ($active->empty()) {
-                true => null,
-                false => ElapsedPeriod::of(0), // use polling to avoid blocking the tasks
-            });
+            ->watch();
         $watch = $this->servers->reduce(
             $watch,
             static fn(Watch $watch, $server) => $watch->forRead($server),

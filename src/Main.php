@@ -10,7 +10,7 @@ use Innmind\CLI\{
     Commands,
 };
 use Innmind\OperatingSystem\OperatingSystem;
-use Innmind\Http\Message\{
+use Innmind\Http\{
     ServerRequest,
     Response,
 };
@@ -19,7 +19,7 @@ abstract class Main extends Cli
 {
     protected function main(Environment $env, OperatingSystem $os): Environment
     {
-        $run = Commands::of(Serve::of($os, $this->handle(...)));
+        $run = Commands::of(Serve::of($os, static::handle(...)));
 
         return $run($env);
     }

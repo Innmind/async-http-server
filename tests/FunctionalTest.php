@@ -9,13 +9,13 @@ use Innmind\Server\Control\Server\{
     Signal,
 };
 use Innmind\Http\{
-    Message\Request\Request,
-    Message\Response,
-    Message\Method,
+    Request,
+    Response,
+    Method,
     ProtocolVersion,
 };
 use Innmind\Url\Url;
-use PHPUnit\Framework\TestCase;
+use Innmind\BlackBox\PHPUnit\Framework\TestCase;
 
 class FunctionalTest extends TestCase
 {
@@ -54,7 +54,7 @@ class FunctionalTest extends TestCase
         $response = $this
             ->os
             ->remote()
-            ->http()(new Request(
+            ->http()(Request::of(
                 Url::of('http://127.0.0.1:8080'),
                 Method::get,
                 ProtocolVersion::v10,

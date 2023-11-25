@@ -14,19 +14,14 @@ use Innmind\CLI\{
     Console,
 };
 use Innmind\OperatingSystem\OperatingSystem;
-use Innmind\Mantle\{
-    Forerunner,
-    Suspend\TimeFrame,
-};
-use Innmind\TimeContinuum\Earth\ElapsedPeriod;
-use Innmind\Http\Message\{
+use Innmind\Mantle\Forerunner;
+use Innmind\Http\{
     ServerRequest,
     Response,
-    Environment as HttpEnv,
+    ServerRequest\Environment as HttpEnv,
 };
 use Innmind\Url\Authority\Port;
 use Innmind\Socket;
-use Innmind\Stream\Streams;
 use Innmind\Immutable\{
     Sequence,
     Str,
@@ -84,12 +79,11 @@ final class Serve implements Command
     public function usage(): string
     {
         return <<<USAGE
-        serve --port= --time-frame= --no-output
+        serve --port= --no-output
 
         Start an HTTP server
 
         --port is the port on which to expose the server (default: 8080)
-        --time-frame is the amount of time (in milliseconds) allowed for a request before suspending (default: 100)
         USAGE;
     }
 
@@ -99,31 +93,12 @@ final class Serve implements Command
     private function serve(Console $console, Sequence $servers): Console
     {
         $source = Server::of(
-            $this->os,
-            match (true) {
-                $this->os instanceof OperatingSystem\Unix => $this->os->config()->streamCapabilities(),
-                default => Streams::fromAmbientAuthority(),
-            },
+            $this->os->clock(),
             $servers,
-            InjectEnvironment::of(new HttpEnv($console->variables())),
+            InjectEnvironment::of(HttpEnv::of($console->variables())),
             $this->handle,
         );
-        $forerunner = Forerunner::of(
-            $this->os->clock(),
-            TimeFrame::of(
-                $this->os->clock(),
-                ElapsedPeriod::of(
-                    $console
-                        ->options()
-                        ->maybe('time-frame')
-                        ->filter(\is_numeric(...))
-                        ->match(
-                            static fn($ms) => (int) $ms,
-                            static fn() => 100,
-                        ),
-                ),
-            ),
-        );
+        $forerunner = Forerunner::of($this->os);
 
         if ($console->options()->contains('no-output')) {
             $source = $source->withOutput(Nothing::of());
@@ -131,9 +106,6 @@ final class Serve implements Command
             $console = $console->output(Str::of("HTTP server ready!\n"));
         }
 
-        return $forerunner(
-            $console,
-            $source,
-        );
+        return $forerunner($console, $source);
     }
 }

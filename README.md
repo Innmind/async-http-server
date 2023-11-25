@@ -22,10 +22,10 @@ require 'path/to/vendor/autoload.php';
 
 use Innmind\Async\HttpServer\Main;
 use Innmind\OperatingSystem\OperatingSystem;
-use Innmind\Http\Message\{
+use Innmind\Http\{
     ServerRequest,
     Response,
-    StatusCode,
+    Response\StatusCode,
 };
 use Innmind\Filesystem\Name;
 use Innmind\Url\Path;
@@ -38,13 +38,13 @@ new class extends Main {
             ->mount(Path::of('somewhere/'))
             ->get(Name::of('some-file'))
             ->match(
-                static fn($file) => new Response\Response(
+                static fn($file) => Response::of(
                     StatusCode::ok,
                     $request->protocolVersion(),
                     null,
                     $file->content(),
                 ),
-                static fn() => new Response\Response(
+                static fn() => Response::of(
                     StatusCode::notFound,
                     $request->protocolVersion(),
                 ),

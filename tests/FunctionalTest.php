@@ -33,6 +33,7 @@ class FunctionalTest extends TestCase
                 Command::foreground('php fixtures/server.php')
                     ->withEnvironment('PATH', \getenv('PATH')),
             );
+        var_dump($this->server->output()->toString());
     }
 
     public function tearDown(): void

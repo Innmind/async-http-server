@@ -33,7 +33,6 @@ class FunctionalTest extends TestCase
                 Command::foreground('php fixtures/server.php')
                     ->withEnvironment('PATH', \getenv('PATH')),
             );
-        var_dump($this->server->output()->toString());
     }
 
     public function tearDown(): void
@@ -49,8 +48,15 @@ class FunctionalTest extends TestCase
 
     public function testServerRespond()
     {
-        // let time for the server to boot
-        \sleep(1);
+        $found = $this
+            ->server
+            ->output()
+            ->chunks()
+            ->find(static fn($pair) => $pair[0]->startsWith('HTTP server ready!'));
+        $this->assertTrue($found->match(
+            static fn() => true,
+            static fn() => false,
+        ));
 
         $response = $this
             ->os

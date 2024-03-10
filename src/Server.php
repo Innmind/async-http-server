@@ -36,7 +36,7 @@ final class Server
 {
     private IOServer|IOServer\Pool $servers;
     private InjectEnvironment $injectEnv;
-    private ResponseSender $send;
+    private Encode $encode;
     /** @var callable(ServerRequest, OperatingSystem): Response */
     private $handle;
     private Display $display;
@@ -49,13 +49,13 @@ final class Server
     private function __construct(
         IOServer|IOServer\Pool $servers,
         InjectEnvironment $injectEnv,
-        ResponseSender $send,
+        Encode $encode,
         callable $handle,
         Display $display,
     ) {
         $this->servers = $servers->watch();
         $this->injectEnv = $injectEnv;
-        $this->send = $send;
+        $this->encode = $encode;
         $this->handle = $handle;
         $this->display = $display;
     }
@@ -106,7 +106,7 @@ final class Server
                         null,
                         Content::ofString('Request doesn\'t respect HTTP protocol'),
                     )))
-                    ->flatMap(fn($response) => ($this->send)($connection, $response))
+                    ->flatMap(fn($response) => $connection->send(($this->encode)($response)))
                     ->flatMap(
                         static fn() => $connection
                             ->unwrap()
@@ -142,7 +142,7 @@ final class Server
         return new self(
             $servers,
             $injectEnv,
-            new ResponseSender($clock),
+            new Encode($clock),
             $handle,
             Display::of(),
         );
@@ -156,7 +156,7 @@ final class Server
         return new self(
             $this->servers,
             $this->injectEnv,
-            $this->send,
+            $this->encode,
             $this->handle,
             $this->display->with($output),
         );

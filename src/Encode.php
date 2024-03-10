@@ -4,22 +4,19 @@ declare(strict_types = 1);
 namespace Innmind\Async\HttpServer;
 
 use Innmind\TimeContinuum\Clock;
-use Innmind\IO\Sockets\Client;
 use Innmind\Http\{
     Response,
     Header\Date,
 };
 use Innmind\Immutable\{
-    Maybe,
     Str,
     Sequence,
-    SideEffect,
 };
 
 /**
  * @internal
  */
-final class ResponseSender
+final class Encode
 {
     private const EOL = "\r\n";
 
@@ -31,12 +28,10 @@ final class ResponseSender
     }
 
     /**
-     * @return Maybe<SideEffect>
+     * @return Sequence<Str>
      */
-    public function __invoke(
-        Client $connection,
-        Response $response,
-    ): Maybe {
+    public function __invoke(Response $response): Sequence
+    {
         $headers = $response->headers();
         $headers = $headers
             ->get('date')
@@ -53,7 +48,8 @@ final class ResponseSender
         );
         /** @var Sequence<string> */
         $chunks = Sequence::of($firstLine);
-        $chunks = $chunks
+
+        return $chunks
             ->append($headers->all()->map(
                 static fn($header) => $header->toString(),
             ))
@@ -63,7 +59,5 @@ final class ResponseSender
             ->append($response->body()->chunks())
             ->add(Str::of(self::EOL))
             ->add(Str::of(self::EOL));
-
-        return $connection->send($chunks);
     }
 }

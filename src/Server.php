@@ -25,26 +25,18 @@ use Innmind\Http\{
     Response\StatusCode,
     ProtocolVersion,
 };
-use Innmind\IO\IO;
-use Innmind\Socket;
-use Innmind\Stream\{
-    Watch,
-    Watch\Ready,
-};
+use Innmind\IO\Sockets\Server as IOServer;
 use Innmind\Immutable\{
     Sequence,
-    Set,
     Maybe,
     Str,
-    Predicate\Instance,
 };
 
 final class Server
 {
-    /** @var Sequence<Socket\Server> */
-    private Sequence $servers;
+    private IOServer|IOServer\Pool $servers;
     private InjectEnvironment $injectEnv;
-    private ResponseSender $send;
+    private Encode $encode;
     /** @var callable(ServerRequest, OperatingSystem): Response */
     private $handle;
     private Display $display;
@@ -52,19 +44,18 @@ final class Server
     /**
      * @psalm-mutation-free
      *
-     * @param Sequence<Socket\Server> $servers
      * @param callable(ServerRequest, OperatingSystem): Response $handle
      */
     private function __construct(
-        Sequence $servers,
+        IOServer|IOServer\Pool $servers,
         InjectEnvironment $injectEnv,
-        ResponseSender $send,
+        Encode $encode,
         callable $handle,
         Display $display,
     ) {
-        $this->servers = $servers;
+        $this->servers = $servers->watch();
         $this->injectEnv = $injectEnv;
-        $this->send = $send;
+        $this->encode = $encode;
         $this->handle = $handle;
         $this->display = $display;
     }
@@ -83,20 +74,11 @@ final class Server
     ): Continuation {
         $console = ($this->display)($console, Str::of("Pending connections...\n"));
 
-        $ready = $this->watch($os)->match(
-            static fn($ready) => $ready->toRead(),
-            static fn() => Set::of(),
-        );
-        $connections = $ready
-            ->keep(Instance::of(Socket\Server::class))
-            ->flatMap(static fn($server) => $server->accept()->match(
-                static fn($connection) => Set::of($connection),
-                static fn() => Set::of(),
-            ))
+        $connections = $this
+            ->servers
+            ->accept()
             ->map(fn($connection) => Task::of(function($os) use ($connection) {
-                $io = IO::of($os->sockets()->watch(...))
-                    ->readable()
-                    ->wrap($connection)
+                $io = $connection
                     ->toEncoding(Str\Encoding::ascii)
                     ->watch();
 
@@ -124,9 +106,10 @@ final class Server
                         null,
                         Content::ofString('Request doesn\'t respect HTTP protocol'),
                     )))
-                    ->flatMap(fn($response) => ($this->send)($connection, $response))
+                    ->flatMap(fn($response) => $connection->send(($this->encode)($response)))
                     ->flatMap(
-                        static fn($connection) => $connection
+                        static fn() => $connection
+                            ->unwrap()
                             ->close()
                             ->maybe(),
                     )
@@ -135,27 +118,31 @@ final class Server
                         static fn() => null, // failed to send response or close connection
                     );
             }));
+
+        if ($connections instanceof Maybe) {
+            $connections = $connections->toSequence();
+        }
+
         $console = ($this->display)($console, Str::of("New connections: {$connections->size()}\n"));
 
         return $continuation
             ->carryWith($console)
-            ->launch(Sequence::of(...$connections->toList()));
+            ->launch($connections);
     }
 
     /**
-     * @param Sequence<Socket\Server> $servers
      * @param callable(ServerRequest, OperatingSystem): Response $handle
      */
     public static function of(
         Clock $clock,
-        Sequence $servers,
+        IOServer|IOServer\Pool $servers,
         InjectEnvironment $injectEnv,
         callable $handle,
     ): self {
         return new self(
             $servers,
             $injectEnv,
-            new ResponseSender($clock),
+            new Encode($clock),
             $handle,
             Display::of(),
         );
@@ -169,25 +156,9 @@ final class Server
         return new self(
             $this->servers,
             $this->injectEnv,
-            $this->send,
+            $this->encode,
             $this->handle,
             $this->display->with($output),
         );
-    }
-
-    /**
-     * @return Maybe<Ready>
-     */
-    private function watch(OperatingSystem $os): Maybe
-    {
-        $watch = $os
-            ->sockets()
-            ->watch();
-        $watch = $this->servers->reduce(
-            $watch,
-            static fn(Watch $watch, $server) => $watch->forRead($server),
-        );
-
-        return $watch();
     }
 }

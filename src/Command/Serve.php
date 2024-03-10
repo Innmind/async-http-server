@@ -21,11 +21,8 @@ use Innmind\Http\{
     ServerRequest\Environment as HttpEnv,
 };
 use Innmind\Url\Authority\Port;
-use Innmind\Socket;
-use Innmind\Immutable\{
-    Sequence,
-    Str,
-};
+use Innmind\IO\Sockets\Server as IOServer;
+use Innmind\Immutable\Str;
 
 final class Serve implements Command
 {
@@ -87,10 +84,7 @@ final class Serve implements Command
         USAGE;
     }
 
-    /**
-     * @param Sequence<Socket\Server> $servers
-     */
-    private function serve(Console $console, Sequence $servers): Console
+    private function serve(Console $console, IOServer|IOServer\Pool $servers): Console
     {
         $source = Server::of(
             $this->os->clock(),

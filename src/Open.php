@@ -4,10 +4,8 @@ declare(strict_types = 1);
 namespace Innmind\Async\HttpServer;
 
 use Innmind\OperatingSystem\OperatingSystem;
-use Innmind\Socket\{
-    Internet\Transport,
-    Server,
-};
+use Innmind\IO\Sockets\Server;
+use Innmind\Socket\Internet\Transport;
 use Innmind\IP\{
     IP,
     IPv4,
@@ -32,13 +30,13 @@ final class Open
     }
 
     /**
-     * @return Maybe<Sequence<Server>>
+     * @return Maybe<Server|Server\Pool>
      */
     public function __invoke(OperatingSystem $os): Maybe
     {
         /**
          * @psalm-suppress NamedArgumentNotAllowed
-         * @var Maybe<Sequence<Server>>
+         * @var Maybe<Server|Server\Pool>
          */
         return $this
             ->addresses
@@ -49,7 +47,10 @@ final class Open
             ))
             ->match(
                 static fn($server, $rest) => Maybe::all($server, ...$rest->toList())->map(
-                    static fn(Server ...$servers) => Sequence::of(...$servers),
+                    static fn(Server $server, Server ...$servers) => Sequence::of(...$servers)->reduce(
+                        $server,
+                        static fn(Server|Server\Pool $pool, $server) => $pool->with($server),
+                    ),
                 ),
                 static fn() => Maybe::nothing(),
             );

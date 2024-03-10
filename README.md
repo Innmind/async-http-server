@@ -59,4 +59,5 @@ This example will return the content of the file `somewhere/some-file` if it exi
 
 The asynchronicity of this program is handled by the `OperatingSystem` abstraction meaning you can write code _as if_ it was synchronous.
 
-**Note**: you can run `php server.php --help` to see the options available to configure the server.
+> [!NOTE]
+> you can run `php server.php --help` to see the options available to configure the server.

@@ -127,7 +127,7 @@ final class Server
 
         return $continuation
             ->carryWith($console)
-            ->launch($connections);
+            ->launch($connections->memoize());
     }
 
     /**

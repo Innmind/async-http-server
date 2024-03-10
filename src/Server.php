@@ -127,7 +127,7 @@ final class Server
 
         return $continuation
             ->carryWith($console)
-            ->launch(Sequence::of(...$connections->toList()));
+            ->launch($connections);
     }
 
     /**

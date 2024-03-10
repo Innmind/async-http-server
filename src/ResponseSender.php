@@ -4,19 +4,16 @@ declare(strict_types = 1);
 namespace Innmind\Async\HttpServer;
 
 use Innmind\TimeContinuum\Clock;
-use Innmind\Socket\Server\Connection;
+use Innmind\IO\Sockets\Client;
 use Innmind\Http\{
     Response,
     Header\Date,
 };
-use Innmind\Stream\{
-    FailedToWriteToStream,
-    DataPartiallyWritten,
-};
 use Innmind\Immutable\{
     Maybe,
-    Either,
     Str,
+    Sequence,
+    SideEffect,
 };
 
 /**
@@ -34,10 +31,10 @@ final class ResponseSender
     }
 
     /**
-     * @return Maybe<Connection>
+     * @return Maybe<SideEffect>
      */
     public function __invoke(
-        Connection $connection,
+        Client $connection,
         Response $response,
     ): Maybe {
         $headers = $response->headers();
@@ -54,36 +51,19 @@ final class ResponseSender
             $response->statusCode()->toString(),
             $response->statusCode()->reasonPhrase(),
         );
-        $connection = $connection->write(Str::of($firstLine)->append(self::EOL));
-        /**
-         * @psalm-suppress ArgumentTypeCoercion Due to the reduce
-         * @var Either<FailedToWriteToStream|DataPartiallyWritten, Connection>
-         */
-        $connection = $headers->reduce(
-            $connection,
-            static fn(Either $either, $header) => $either->flatMap(
-                static fn(Connection $connection) => $connection->write(Str::of($header->toString())->append(self::EOL)),
-            ),
-        );
-        $connection = $connection->flatMap(
-            static fn(Connection $connection) => $connection->write(Str::of(self::EOL)),
-        );
+        /** @var Sequence<string> */
+        $chunks = Sequence::of($firstLine);
+        $chunks = $chunks
+            ->append($headers->all()->map(
+                static fn($header) => $header->toString(),
+            ))
+            ->add('')
+            ->map(Str::of(...))
+            ->map(static fn($line) => $line->append(self::EOL))
+            ->append($response->body()->chunks())
+            ->add(Str::of(self::EOL))
+            ->add(Str::of(self::EOL));
 
-        /**
-         * @psalm-suppress MixedArgumentTypeCoercion Due to the reduce
-         * @var Maybe<Connection>
-         */
-        return $response
-            ->body()
-            ->chunks()
-            ->add(Str::of(self::EOL))
-            ->add(Str::of(self::EOL))
-            ->reduce(
-                $connection,
-                static fn(Either $either, $chunk) => $either->flatMap(
-                    static fn(Connection $connection) => $connection->write($chunk),
-                ),
-            )
-            ->maybe();
+        return $connection->send($chunks);
     }
 }

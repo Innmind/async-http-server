@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- The whole response body was loaded in memory
+
 ## 3.0.0 - 2024-03-10
 
 ### Changed

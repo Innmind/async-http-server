@@ -21,8 +21,6 @@ use Innmind\Http\{
     ServerRequest\Environment as HttpEnv,
 };
 use Innmind\Url\Authority\Port;
-use Innmind\IO\Sockets\Server as IOServer;
-use Innmind\Immutable\Str;
 
 final class Serve implements Command
 {
@@ -52,12 +50,7 @@ final class Serve implements Command
                 static fn() => 8080,
             );
 
-        return Open::of(Port::of($port))($this->os)->match(
-            fn($servers) => $this->serve($console, $servers),
-            static fn() => $console
-                ->error(Str::of("Failed to open sockets\n"))
-                ->exit(1),
-        );
+        return $this->serve($console, Open::of(Port::of($port)));
     }
 
     /**
@@ -84,11 +77,11 @@ final class Serve implements Command
         USAGE;
     }
 
-    private function serve(Console $console, IOServer|IOServer\Pool $servers): Console
+    private function serve(Console $console, Open $open): Console
     {
         $source = Server::of(
             $this->os->clock(),
-            $servers,
+            $open,
             InjectEnvironment::of(HttpEnv::of($console->variables())),
             $this->handle,
         );
@@ -96,8 +89,6 @@ final class Serve implements Command
 
         if ($console->options()->contains('no-output')) {
             $source = $source->withOutput(Nothing::of());
-        } else {
-            $console = $console->output(Str::of("HTTP server ready!\n"));
         }
 
         return $forerunner($console, $source);

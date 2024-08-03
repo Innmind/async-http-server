@@ -34,7 +34,8 @@ use Innmind\Immutable\{
 
 final class Server
 {
-    private IOServer|IOServer\Pool $servers;
+    private Open $open;
+    private IOServer|IOServer\Pool|null $servers = null;
     private InjectEnvironment $injectEnv;
     private Encode $encode;
     /** @var callable(ServerRequest, OperatingSystem): Response */
@@ -47,13 +48,13 @@ final class Server
      * @param callable(ServerRequest, OperatingSystem): Response $handle
      */
     private function __construct(
-        IOServer|IOServer\Pool $servers,
+        Open $open,
         InjectEnvironment $injectEnv,
         Encode $encode,
         callable $handle,
         Display $display,
     ) {
-        $this->servers = $servers->watch();
+        $this->open = $open;
         $this->injectEnv = $injectEnv;
         $this->encode = $encode;
         $this->handle = $handle;
@@ -72,6 +73,30 @@ final class Server
         Continuation $continuation,
         Sequence $terminated,
     ): Continuation {
+        if (\is_null($this->servers)) {
+            $this->servers = ($this->open)($os)->match(
+                static fn($servers) => $servers->watch(),
+                static fn() => null,
+            );
+
+            if (!\is_null($this->servers)) {
+                $console = ($this->display)(
+                    $console,
+                    Str::of("HTTP server ready!\n"),
+                );
+            }
+        }
+
+        if (\is_null($this->servers)) {
+            return $continuation
+                ->carryWith(
+                    $console
+                        ->error(Str::of("Failed to open sockets\n"))
+                        ->exit(1),
+                )
+                ->terminate();
+        }
+
         $console = ($this->display)($console, Str::of("Pending connections...\n"));
 
         $connections = $this
@@ -127,7 +152,7 @@ final class Server
 
         return $continuation
             ->carryWith($console)
-            ->launch($connections);
+            ->launch($connections->memoize());
     }
 
     /**
@@ -135,12 +160,12 @@ final class Server
      */
     public static function of(
         Clock $clock,
-        IOServer|IOServer\Pool $servers,
+        Open $open,
         InjectEnvironment $injectEnv,
         callable $handle,
     ): self {
         return new self(
-            $servers,
+            $open,
             $injectEnv,
             new Encode($clock),
             $handle,
@@ -154,7 +179,7 @@ final class Server
     public function withOutput(Output $output): self
     {
         return new self(
-            $this->servers,
+            $this->open,
             $this->injectEnv,
             $this->encode,
             $this->handle,

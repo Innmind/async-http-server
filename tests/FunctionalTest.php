@@ -48,8 +48,15 @@ class FunctionalTest extends TestCase
 
     public function testServerRespond()
     {
-        // let time for the server to boot
-        \sleep(1);
+        $found = $this
+            ->server
+            ->output()
+            ->chunks()
+            ->find(static fn($pair) => $pair[0]->startsWith('HTTP server ready!'));
+        $this->assertTrue($found->match(
+            static fn() => true,
+            static fn() => false,
+        ));
 
         $response = $this
             ->os
@@ -61,7 +68,7 @@ class FunctionalTest extends TestCase
             ))
             ->match(
                 static fn($success) => $success->response(),
-                static fn() => null,
+                static fn($error) => $error,
             );
 
         $this->assertInstanceOf(Response::class, $response);

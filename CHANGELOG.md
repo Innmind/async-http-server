@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.0.1 - 2024-08-03
+
+### Fixed
+
+- The whole response body was loaded in memory
+- The server was blocking while waiting new connections, preventing previous requests from being served
+
 ## 3.0.0 - 2024-03-10
 
 ### Changed

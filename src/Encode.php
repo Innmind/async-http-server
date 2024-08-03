@@ -46,17 +46,19 @@ final class Encode
             $response->statusCode()->toString(),
             $response->statusCode()->reasonPhrase(),
         );
-        /** @var Sequence<string> */
-        $chunks = Sequence::of($firstLine);
 
-        return $chunks
-            ->append($headers->all()->map(
-                static fn($header) => $header->toString(),
-            ))
-            ->add('')
-            ->map(Str::of(...))
-            ->map(static fn($line) => $line->append(self::EOL))
-            ->append($response->body()->chunks())
+        return $response
+            ->body()
+            ->chunks()
+            ->prepend(
+                $headers
+                    ->all()
+                    ->map(static fn($header) => $header->toString())
+                    ->prepend(Sequence::of($firstLine))
+                    ->add('')
+                    ->map(Str::of(...))
+                    ->map(static fn($line) => $line->append(self::EOL)),
+            )
             ->add(Str::of(self::EOL))
             ->add(Str::of(self::EOL));
     }

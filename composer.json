@@ -16,6 +16,7 @@
     },
     "require": {
         "php": "~8.2",
+        "innmind/immutable": "~5.7",
         "innmind/mantle": "~2.0",
         "innmind/io": "~2.7",
         "innmind/http-parser": "~2.1",

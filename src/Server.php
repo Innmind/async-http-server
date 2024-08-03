@@ -75,7 +75,7 @@ final class Server
     ): Continuation {
         if (\is_null($this->servers)) {
             $this->servers = ($this->open)($os)->match(
-                fn($servers) => $servers->watch(),
+                static fn($servers) => $servers->watch(),
                 static fn() => null,
             );
 

@@ -32,12 +32,13 @@ final class Encode
      */
     public function __invoke(Response $response): Sequence
     {
+        $now = $this->clock->now();
         $headers = $response->headers();
         $headers = $headers
             ->get('date')
             ->match(
                 static fn() => $headers,
-                fn() => ($headers)(Date::of($this->clock->now())),
+                static fn() => ($headers)(Date::of($now)),
             );
 
         $firstLine = \sprintf(

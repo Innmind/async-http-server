@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.0.2 - 2024-10-26
+
+### Changed
+
+- Use `static` closures as much as possible to reduce the probability of creating circular references by capturing `$this` as it can lead to memory root buffer exhaustion.
+
 ## 3.0.1 - 2024-08-03
 
 ### Fixed

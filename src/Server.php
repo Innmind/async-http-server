@@ -99,10 +99,19 @@ final class Server
 
         $console = ($this->display)($console, Str::of("Pending connections...\n"));
 
+        $injectEnv = $this->injectEnv;
+        $handle = $this->handle;
+        $encode = $this->encode;
+
         $connections = $this
             ->servers
             ->accept()
-            ->map(fn($connection) => Task::of(function($os) use ($connection) {
+            ->map(static fn($connection) => Task::of(static function($os) use (
+                $connection,
+                $injectEnv,
+                $handle,
+                $encode,
+            ) {
                 $io = $connection
                     ->toEncoding(Str\Encoding::ascii)
                     ->watch();
@@ -114,10 +123,10 @@ final class Server
                     ->map(DecodeCookie::of())
                     ->map(DecodeQuery::of())
                     ->map(DecodeForm::of())
-                    ->map($this->injectEnv)
-                    ->map(function($request) use ($os) {
+                    ->map($injectEnv)
+                    ->map(static function($request) use ($os, $handle) {
                         try {
-                            return ($this->handle)($request, $os);
+                            return $handle($request, $os);
                         } catch (\Throwable $e) {
                             return Response::of(
                                 StatusCode::internalServerError,
@@ -131,7 +140,7 @@ final class Server
                         null,
                         Content::ofString('Request doesn\'t respect HTTP protocol'),
                     )))
-                    ->flatMap(fn($response) => $connection->send(($this->encode)($response)))
+                    ->flatMap(static fn($response) => $connection->send($encode($response)))
                     ->flatMap(
                         static fn() => $connection
                             ->unwrap()

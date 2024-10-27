@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.1.0 - 2024-10-27
+
+### Added
+
+- `--allow-anyone` option to allow connections from outside the machine
+
 ## 3.0.2 - 2024-10-26
 
 ### Changed

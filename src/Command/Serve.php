@@ -21,6 +21,7 @@ use Innmind\Http\{
     ServerRequest\Environment as HttpEnv,
 };
 use Innmind\Url\Authority\Port;
+use Innmind\IP\IP;
 
 final class Serve implements Command
 {
@@ -50,7 +51,16 @@ final class Serve implements Command
                 static fn() => 8080,
             );
 
-        return $this->serve($console, Open::of(Port::of($port)));
+        return $this->serve($console, Open::of(
+            Port::of($port),
+            $console
+                ->options()
+                ->maybe('allow-anyone')
+                ->match(
+                    static fn() => IP::v4('0.0.0.0'),
+                    static fn() => null,
+                ),
+        ));
     }
 
     /**
@@ -69,11 +79,12 @@ final class Serve implements Command
     public function usage(): string
     {
         return <<<USAGE
-        serve --port= --no-output
+        serve --port= --no-output --allow-anyone
 
         Start an HTTP server
 
         --port is the port on which to expose the server (default: 8080)
+        --allow-anyone to accept connections coming from outside the machine (default: only local connections are allowed)
         USAGE;
     }
 

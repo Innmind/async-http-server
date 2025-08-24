@@ -17,6 +17,7 @@ use Innmind\Http\{
 
 abstract class Main extends Cli
 {
+    #[\Override]
     protected function main(Environment $env, OperatingSystem $os): Environment
     {
         $run = Commands::of(Serve::of($os, static::handle(...)));

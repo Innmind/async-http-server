@@ -15,6 +15,7 @@ final class Everything implements Output
     {
     }
 
+    #[\Override]
     public function __invoke(Console $env, Str $data): Console
     {
         return $env->output($data);

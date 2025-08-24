@@ -40,6 +40,7 @@ final class Serve implements Command
         $this->handle = $handle;
     }
 
+    #[\Override]
     public function __invoke(Console $console): Console
     {
         $port = $console
@@ -76,6 +77,7 @@ final class Serve implements Command
     /**
      * @psalm-mutation-free
      */
+    #[\Override]
     public function usage(): string
     {
         return <<<USAGE

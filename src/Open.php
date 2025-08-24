@@ -58,16 +58,16 @@ final class Open
 
     public static function of(
         Port $port,
-        IP $ip = null,
-        Transport $transport = null,
+        ?IP $ip = null,
+        ?Transport $transport = null,
     ): self {
         return (new self(Sequence::of()))->and($port, $ip, $transport);
     }
 
     public function and(
         Port $port,
-        IP $ip = null,
-        Transport $transport = null,
+        ?IP $ip = null,
+        ?Transport $transport = null,
     ): self {
         return new self(($this->addresses)([
             $port,

@@ -14,11 +14,12 @@ use Innmind\Http\{
     ServerRequest,
     Response,
 };
+use Innmind\Immutable\Attempt;
 
 abstract class Main extends Cli
 {
     #[\Override]
-    protected function main(Environment $env, OperatingSystem $os): Environment
+    protected function main(Environment $env, OperatingSystem $os): Attempt
     {
         $run = Commands::of(Serve::of($os, static::handle(...)));
 

@@ -4,8 +4,10 @@ declare(strict_types = 1);
 namespace Innmind\Async\HttpServer;
 
 use Innmind\OperatingSystem\OperatingSystem;
-use Innmind\IO\Sockets\Server;
-use Innmind\Socket\Internet\Transport;
+use Innmind\IO\Sockets\{
+    Servers\Server,
+    Internet\Transport,
+};
 use Innmind\IP\{
     IP,
     IPv4,
@@ -14,6 +16,7 @@ use Innmind\Url\Authority\Port;
 use Innmind\Immutable\{
     Sequence,
     Maybe,
+    Predicate\Instance,
 };
 
 final class Open
@@ -34,10 +37,9 @@ final class Open
      */
     public function __invoke(OperatingSystem $os): Maybe
     {
-        /**
-         * @psalm-suppress NamedArgumentNotAllowed
-         * @var Maybe<Server|Server\Pool>
-         */
+        /** @var Server|Server\Pool|null */
+        $server = null;
+
         return $this
             ->addresses
             ->map(static fn($address) => $os->ports()->open(
@@ -45,14 +47,21 @@ final class Open
                 $address[1],
                 $address[0],
             ))
-            ->match(
-                static fn($server, $rest) => Maybe::all($server, ...$rest->toList())->map(
-                    static fn(Server $server, Server ...$servers) => Sequence::of(...$servers)->reduce(
-                        $server,
-                        static fn(Server|Server\Pool $pool, $server) => $pool->with($server),
-                    ),
+            ->sink($server)
+            ->attempt(
+                static fn($pool, $server) => $server->map(
+                    static fn($server) => match (true) {
+                        \is_null($pool) => $server,
+                        $pool instanceof Server => $pool->pool($server),
+                        default => $pool->with($server),
+                    },
                 ),
-                static fn() => Maybe::nothing(),
+            )
+            ->maybe()
+            ->keep(
+                Instance::of(Server::class)->or(
+                    Instance::of(Server\Pool::class),
+                ),
             );
     }
 

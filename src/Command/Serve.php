@@ -11,10 +11,11 @@ use Innmind\Async\HttpServer\{
 };
 use Innmind\CLI\{
     Command,
+    Command\Usage,
     Console,
 };
 use Innmind\OperatingSystem\OperatingSystem;
-use Innmind\Mantle\Forerunner;
+use Innmind\Async\Scheduler;
 use Innmind\Http\{
     ServerRequest,
     Response,
@@ -22,6 +23,7 @@ use Innmind\Http\{
 };
 use Innmind\Url\Authority\Port;
 use Innmind\IP\IP;
+use Innmind\Immutable\Attempt;
 
 final class Serve implements Command
 {
@@ -41,7 +43,7 @@ final class Serve implements Command
     }
 
     #[\Override]
-    public function __invoke(Console $console): Console
+    public function __invoke(Console $console): Attempt
     {
         $port = $console
             ->options()
@@ -78,32 +80,36 @@ final class Serve implements Command
      * @psalm-mutation-free
      */
     #[\Override]
-    public function usage(): string
+    public function usage(): Usage
     {
-        return <<<USAGE
+        return Usage::parse(<<<USAGE
         serve --port= --no-output --allow-anyone
 
         Start an HTTP server
 
         --port is the port on which to expose the server (default: 8080)
         --allow-anyone to accept connections coming from outside the machine (default: only local connections are allowed)
-        USAGE;
+        USAGE);
     }
 
-    private function serve(Console $console, Open $open): Console
+    /**
+     * @return Attempt<Console>
+     */
+    private function serve(Console $console, Open $open): Attempt
     {
-        $source = Server::of(
+        $server = Server::of(
             $this->os->clock(),
             $open,
             InjectEnvironment::of(HttpEnv::of($console->variables())),
             $this->handle,
         );
-        $forerunner = Forerunner::of($this->os);
 
         if ($console->options()->contains('no-output')) {
-            $source = $source->withOutput(Nothing::of());
+            $server = $server->withOutput(Nothing::of());
         }
 
-        return $forerunner($console, $source);
+        return Scheduler::of($this->os)
+            ->sink(Attempt::result($console))
+            ->with($server);
     }
 }

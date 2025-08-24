@@ -8,7 +8,10 @@ use Innmind\Async\HttpServer\Display\{
     Everything,
 };
 use Innmind\CLI\Console;
-use Innmind\Immutable\Str;
+use Innmind\Immutable\{
+    Attempt,
+    Str,
+};
 
 /**
  * @psalm-immutable
@@ -22,7 +25,10 @@ final class Display
         $this->output = $output;
     }
 
-    public function __invoke(Console $console, Str $data): Console
+    /**
+     * @return Attempt<Console>
+     */
+    public function __invoke(Console $console, Str $data): Attempt
     {
         return ($this->output)($console, $data);
     }

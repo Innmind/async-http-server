@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Requires `innmind/foundation:~1.9`
+- Requires `innmind/http-parser:~3.0`
+
 ### Fixed
 
 - PHP `8.4` deprecations

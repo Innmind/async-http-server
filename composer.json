@@ -16,12 +16,8 @@
     },
     "require": {
         "php": "~8.2",
-        "innmind/immutable": "~5.7",
-        "innmind/mantle": "~2.0",
-        "innmind/io": "~2.7",
-        "innmind/http-parser": "~2.1",
-        "innmind/cli": "^3.3",
-        "innmind/operating-system": "~5.0"
+        "innmind/foundation": "~1.9",
+        "innmind/http-parser": "~3.0"
     },
     "autoload": {
         "psr-4": {
@@ -37,8 +33,5 @@
         "innmind/static-analysis": "^1.2.1",
         "innmind/black-box": "~6.5",
         "innmind/coding-standard": "~2.0"
-    },
-    "provide": {
-        "innmind/mantle-sources": "1.0"
     }
 }

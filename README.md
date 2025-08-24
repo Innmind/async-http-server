@@ -36,6 +36,7 @@ new class extends Main {
         return $os
             ->filesystem()
             ->mount(Path::of('somewhere/'))
+            ->unwrap()
             ->get(Name::of('some-file'))
             ->match(
                 static fn($file) => Response::of(

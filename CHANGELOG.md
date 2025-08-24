@@ -1,5 +1,16 @@
 # Changelog
 
+## 4.0.0 - 2025-08-24
+
+### Changed
+
+- Requires `innmind/foundation:~1.9`
+- Requires `innmind/http-parser:~3.0`
+
+### Fixed
+
+- PHP `8.4` deprecations
+
 ## 3.1.0 - 2024-10-27
 
 ### Added

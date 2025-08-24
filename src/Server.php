@@ -5,9 +5,9 @@ namespace Innmind\Async\HttpServer;
 
 use Innmind\Async\HttpServer\Display\Output;
 use Innmind\CLI\Console;
-use Innmind\Mantle\{
-    Source\Continuation,
-    Task,
+use Innmind\Async\{
+    Scope\Continuation,
+    Task\Discard,
 };
 use Innmind\OperatingSystem\OperatingSystem;
 use Innmind\TimeContinuum\Clock;
@@ -25,8 +25,9 @@ use Innmind\Http\{
     Response\StatusCode,
     ProtocolVersion,
 };
-use Innmind\IO\Sockets\Server as IOServer;
+use Innmind\IO\Sockets\Servers\Server as IOServer;
 use Innmind\Immutable\{
+    Attempt,
     Sequence,
     Maybe,
     Str,
@@ -62,27 +63,39 @@ final class Server
     }
 
     /**
-     * @param Continuation<Console, void> $continuation
-     * @param Sequence<void> $terminated
+     * @param Attempt<Console> $console
+     * @param Continuation<Attempt<Console>> $continuation
+     * @param Sequence<mixed> $results
      *
-     * @return Continuation<Console, void>
+     * @return Continuation<Attempt<Console>>
      */
     public function __invoke(
-        Console $console,
+        Attempt $console,
         OperatingSystem $os,
         Continuation $continuation,
-        Sequence $terminated,
+        Sequence $results,
     ): Continuation {
+        $failed = $console->match(
+            static fn() => false,
+            static fn() => true,
+        );
+
+        if ($failed) {
+            return $continuation->terminate();
+        }
+
         if (\is_null($this->servers)) {
             $this->servers = ($this->open)($os)->match(
-                static fn($servers) => $servers->watch(),
+                static fn($servers) => $servers,
                 static fn() => null,
             );
 
             if (!\is_null($this->servers)) {
-                $console = ($this->display)(
-                    $console,
-                    Str::of("HTTP server ready!\n"),
+                $console = $console->flatMap(
+                    fn($console) => ($this->display)(
+                        $console,
+                        Str::of("HTTP server ready!\n"),
+                    ),
                 );
             }
         }
@@ -91,13 +104,18 @@ final class Server
             return $continuation
                 ->carryWith(
                     $console
-                        ->error(Str::of("Failed to open sockets\n"))
-                        ->exit(1),
+                        ->map(static fn($console) => $console->exit(1))
+                        ->flatMap(static fn($console) => $console->error(Str::of("Failed to open sockets\n"))),
                 )
                 ->terminate();
         }
 
-        $console = ($this->display)($console, Str::of("Pending connections...\n"));
+        $console = $console->flatMap(
+            fn($console) => ($this->display)(
+                $console,
+                Str::of("Pending connections...\n"),
+            ),
+        );
 
         $injectEnv = $this->injectEnv;
         $handle = $this->handle;
@@ -106,7 +124,7 @@ final class Server
         $connections = $this
             ->servers
             ->accept()
-            ->map(static fn($connection) => Task::of(static function($os) use (
+            ->map(static fn($connection) => static function(OperatingSystem $os) use (
                 $connection,
                 $injectEnv,
                 $handle,
@@ -140,10 +158,13 @@ final class Server
                         null,
                         Content::ofString('Request doesn\'t respect HTTP protocol'),
                     )))
-                    ->flatMap(static fn($response) => $connection->send($encode($response)))
+                    ->flatMap(
+                        static fn($response) => $connection
+                            ->sink($encode($response))
+                            ->maybe(),
+                    )
                     ->flatMap(
                         static fn() => $connection
-                            ->unwrap()
                             ->close()
                             ->maybe(),
                     )
@@ -151,17 +172,26 @@ final class Server
                         static fn() => null, // response sent
                         static fn() => null, // failed to send response or close connection
                     );
-            }));
 
-        if ($connections instanceof Maybe) {
-            $connections = $connections->toSequence();
+                return Discard::result;
+            });
+
+        if ($connections instanceof Attempt) {
+            $connections = $connections
+                ->maybe()
+                ->toSequence();
         }
 
-        $console = ($this->display)($console, Str::of("New connections: {$connections->size()}\n"));
+        $console = $console->flatMap(
+            fn($console) => ($this->display)(
+                $console,
+                Str::of("New connections: {$connections->size()}\n"),
+            ),
+        );
 
         return $continuation
             ->carryWith($console)
-            ->launch($connections->memoize());
+            ->schedule($connections->memoize());
     }
 
     /**

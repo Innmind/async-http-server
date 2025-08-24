@@ -4,7 +4,10 @@ declare(strict_types = 1);
 namespace Innmind\Async\HttpServer\Display;
 
 use Innmind\CLI\Console;
-use Innmind\Immutable\Str;
+use Innmind\Immutable\{
+    Attempt,
+    Str,
+};
 
 /**
  * @psalm-immutable
@@ -15,9 +18,10 @@ final class Nothing implements Output
     {
     }
 
-    public function __invoke(Console $env, Str $data): Console
+    #[\Override]
+    public function __invoke(Console $env, Str $data): Attempt
     {
-        return $env;
+        return Attempt::result($env);
     }
 
     /**

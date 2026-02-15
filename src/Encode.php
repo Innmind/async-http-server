@@ -3,7 +3,7 @@ declare(strict_types = 1);
 
 namespace Innmind\Async\HttpServer;
 
-use Innmind\TimeContinuum\Clock;
+use Innmind\Time\Clock;
 use Innmind\Http\{
     Response,
     Header\Date,

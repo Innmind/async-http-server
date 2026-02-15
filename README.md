@@ -29,10 +29,17 @@ use Innmind\Http\{
 };
 use Innmind\Filesystem\Name;
 use Innmind\Url\Path;
+use Innmind\Immutable\Map;
 
 new class extends Main {
-    protected static function handle(ServerRequest $request, OperatingSystem $os): Response
-    {
+    /**
+     * @param Map<string, string> $env
+     */
+    protected static function handle(
+        ServerRequest $request,
+        OperatingSystem $os,
+        Map $env,
+    ): Response {
         return $os
             ->filesystem()
             ->mount(Path::of('somewhere/'))

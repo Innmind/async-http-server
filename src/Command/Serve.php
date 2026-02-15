@@ -6,7 +6,6 @@ namespace Innmind\Async\HttpServer\Command;
 use Innmind\Async\HttpServer\{
     Server,
     Open,
-    InjectEnvironment,
     Display\Nothing,
 };
 use Innmind\CLI\{
@@ -19,20 +18,22 @@ use Innmind\Async\Scheduler;
 use Innmind\Http\{
     ServerRequest,
     Response,
-    ServerRequest\Environment as HttpEnv,
 };
 use Innmind\Url\Authority\Port;
 use Innmind\IP\IP;
-use Innmind\Immutable\Attempt;
+use Innmind\Immutable\{
+    Attempt,
+    Map,
+};
 
 final class Serve implements Command
 {
     private OperatingSystem $os;
-    /** @var callable(ServerRequest, OperatingSystem): Response */
+    /** @var callable(ServerRequest, OperatingSystem, Map<string, string>): Response */
     private $handle;
 
     /**
-     * @param callable(ServerRequest, OperatingSystem): Response $handle
+     * @param callable(ServerRequest, OperatingSystem, Map<string, string>): Response $handle
      */
     private function __construct(
         OperatingSystem $os,
@@ -67,7 +68,7 @@ final class Serve implements Command
     }
 
     /**
-     * @param callable(ServerRequest, OperatingSystem): Response $handle
+     * @param callable(ServerRequest, OperatingSystem, Map<string, string>): Response $handle
      */
     public static function of(
         OperatingSystem $os,
@@ -97,11 +98,16 @@ final class Serve implements Command
      */
     private function serve(Console $console, Open $open): Attempt
     {
+        $handle = $this->handle;
+
         $server = Server::of(
             $this->os->clock(),
             $open,
-            InjectEnvironment::of(HttpEnv::of($console->variables())),
-            $this->handle,
+            static fn(ServerRequest $request, OperatingSystem $os) => $handle(
+                $request,
+                $os,
+                $console->variables(),
+            ),
         );
 
         if ($console->options()->contains('no-output')) {

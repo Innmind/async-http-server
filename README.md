@@ -1,6 +1,6 @@
 # Async HTTP Server
 
-[![Build Status](https://github.com/innmind/async-http-server/workflows/CI/badge.svg?branch=main)](https://github.com/innmind/async-http-server/actions?query=workflow%3ACI)
+[![CI](https://github.com/Innmind/async-http-server/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Innmind/async-http-server/actions/workflows/ci.yml)
 [![Type Coverage](https://shepherd.dev/github/innmind/async-http-server/coverage.svg)](https://shepherd.dev/github/innmind/async-http-server)
 
 Experimental async HTTP server built on top of `Fiber`s.
@@ -29,10 +29,17 @@ use Innmind\Http\{
 };
 use Innmind\Filesystem\Name;
 use Innmind\Url\Path;
+use Innmind\Immutable\Map;
 
 new class extends Main {
-    protected static function handle(ServerRequest $request, OperatingSystem $os): Response
-    {
+    /**
+     * @param Map<string, string> $env
+     */
+    protected static function handle(
+        ServerRequest $request,
+        OperatingSystem $os,
+        Map $env,
+    ): Response {
         return $os
             ->filesystem()
             ->mount(Path::of('somewhere/'))

@@ -13,10 +13,14 @@ use Innmind\Http\{
     Header\ContentLength,
 };
 use Innmind\Filesystem\File\Content;
+use Innmind\Immutable\Map;
 
 new class extends Main {
-    protected static function handle(ServerRequest $request, OperatingSystem $os): Response
-    {
+    protected static function handle(
+        ServerRequest $request,
+        OperatingSystem $os,
+        Map $env,
+    ): Response {
         return Response::of(
             StatusCode::ok,
             $request->protocolVersion(),

@@ -14,7 +14,10 @@ use Innmind\Http\{
     ServerRequest,
     Response,
 };
-use Innmind\Immutable\Attempt;
+use Innmind\Immutable\{
+    Attempt,
+    Map,
+};
 
 abstract class Main extends Cli
 {
@@ -28,9 +31,12 @@ abstract class Main extends Cli
 
     /**
      * The handler is static to prevent sharing state between requests
+     *
+     * @param Map<string, string> $env Environment variables
      */
     abstract protected static function handle(
         ServerRequest $request,
         OperatingSystem $os,
+        Map $env,
     ): Response;
 }

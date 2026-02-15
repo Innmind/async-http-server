@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Requires PHP `8.4`
+- Requires `innmind/foundation:~2.1`
+- Requires `innmind/http-parser:~4.0`
+- The environment variables are now exposed as third argument of `Innmind\Async\HttpServer\Main::handle()`
+
 ## 4.0.0 - 2025-08-24
 
 ### Changed

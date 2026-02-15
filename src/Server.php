@@ -10,7 +10,7 @@ use Innmind\Async\{
     Task\Discard,
 };
 use Innmind\OperatingSystem\OperatingSystem;
-use Innmind\TimeContinuum\Clock;
+use Innmind\Time\Clock;
 use Innmind\Filesystem\File\Content;
 use Innmind\HttpParser\{
     Request\Parse,
@@ -28,44 +28,29 @@ use Innmind\Http\{
 use Innmind\IO\Sockets\Servers\Server as IOServer;
 use Innmind\Immutable\{
     Attempt,
-    Sequence,
     Maybe,
     Str,
 };
 
 final class Server
 {
-    private Open $open;
-    private IOServer|IOServer\Pool|null $servers = null;
-    private InjectEnvironment $injectEnv;
-    private Encode $encode;
-    /** @var callable(ServerRequest, OperatingSystem): Response */
-    private $handle;
-    private Display $display;
-
     /**
      * @psalm-mutation-free
      *
-     * @param callable(ServerRequest, OperatingSystem): Response $handle
+     * @param \Closure(ServerRequest, OperatingSystem): Response $handle
      */
     private function __construct(
-        Open $open,
-        InjectEnvironment $injectEnv,
-        Encode $encode,
-        callable $handle,
-        Display $display,
+        private Open $open,
+        private Encode $encode,
+        private \Closure $handle,
+        private Display $display,
+        private IOServer|IOServer\Pool|null $servers = null,
     ) {
-        $this->open = $open;
-        $this->injectEnv = $injectEnv;
-        $this->encode = $encode;
-        $this->handle = $handle;
-        $this->display = $display;
     }
 
     /**
      * @param Attempt<Console> $console
      * @param Continuation<Attempt<Console>> $continuation
-     * @param Sequence<mixed> $results
      *
      * @return Continuation<Attempt<Console>>
      */
@@ -73,7 +58,6 @@ final class Server
         Attempt $console,
         OperatingSystem $os,
         Continuation $continuation,
-        Sequence $results,
     ): Continuation {
         $failed = $console->match(
             static fn() => false,
@@ -117,7 +101,6 @@ final class Server
             ),
         );
 
-        $injectEnv = $this->injectEnv;
         $handle = $this->handle;
         $encode = $this->encode;
 
@@ -126,7 +109,6 @@ final class Server
             ->accept()
             ->map(static fn($connection) => static function(OperatingSystem $os) use (
                 $connection,
-                $injectEnv,
                 $handle,
                 $encode,
             ) {
@@ -141,7 +123,6 @@ final class Server
                     ->map(DecodeCookie::of())
                     ->map(DecodeQuery::of())
                     ->map(DecodeForm::of())
-                    ->map($injectEnv)
                     ->map(static function($request) use ($os, $handle) {
                         try {
                             return $handle($request, $os);
@@ -195,17 +176,15 @@ final class Server
     }
 
     /**
-     * @param callable(ServerRequest, OperatingSystem): Response $handle
+     * @param \Closure(ServerRequest, OperatingSystem): Response $handle
      */
     public static function of(
         Clock $clock,
         Open $open,
-        InjectEnvironment $injectEnv,
-        callable $handle,
+        \Closure $handle,
     ): self {
         return new self(
             $open,
-            $injectEnv,
             new Encode($clock),
             $handle,
             Display::of(),
@@ -219,7 +198,6 @@ final class Server
     {
         return new self(
             $this->open,
-            $this->injectEnv,
             $this->encode,
             $this->handle,
             $this->display->with($output),
